@@ -48,11 +48,13 @@
 
 
 
-//#include <opencv2/features2d/features2d.hpp>
+#include <opencv2/features2d/features2d.hpp>
 #include <opencv2/features2d.hpp>
 #include <opencv2/cudafeatures2d.hpp>
 #include <opencv2/xfeatures2d/cuda.hpp>
 
+
+#include <opencv2/xfeatures2d/nonfree.hpp>
 
 
 #include <cstdio>
@@ -63,6 +65,7 @@
 using namespace std;
 using namespace cv;
 using namespace cv::cuda;
+using namespace cv::xfeatures2d;
 using namespace cv::datasets;
 
 int main(int argc, char *argv[])
@@ -78,117 +81,39 @@ int main(int argc, char *argv[])
     MSM_epflObj *example = static_cast<MSM_epflObj *>(dataset->getTrain()[0].get());
     printf("first image:\nname: %s\n", example->imageName.c_str());
 
-    printf("\nbounding:\n");
-    for (int i=0; i<2; ++i)
-    {
-        for (int j=0; j<3; ++j)
-        {
-            printf("%f ", example->bounding(i, j));
-        }
-        printf("\n");
-    }
+  
 
-    printf("\ncamera:\n");
-    for (int i=0; i<3; ++i)
-    {
-        for (int j=0; j<3; ++j)
-        {
-            printf("%f ", example->camera.mat1(i, j));
-        }
-        printf("\n");
-    }
-    printf("\n");
-
-    for (int i=0; i<3; ++i)
-    {
-        printf("%f ", example->camera.mat2[i]);
-    }
-    printf("\n\n");
-
-    for (int i=0; i<3; ++i)
-    {
-        for (int j=0; j<3; ++j)
-        {
-            printf("%f ", example->camera.mat3(i, j));
-        }
-        printf("\n");
-    }
-    printf("\n");
-
-    for (int i=0; i<3; ++i)
-    {
-        printf("%f ", example->camera.mat4[i]);
-    }
-    printf("\n\n");
-
-    printf("image width: %u, height: %u\n", example->camera.imageWidth, example->camera.imageHeight);
-
-    printf("\nP:\n");
-    for (int i=0; i<3; ++i)
-    {
-        for (int j=0; j<4; ++j)
-        {
-            printf("%f ", example->p(i, j));
-        }
-        printf("\n");
-    }
-
-
-
-
-/*cv::Ptr<cv::DescriptorExtractor>deEx=cv::DescriptorCalculator::create("SIFT");
-
-std::cout << "before computing, feats size " << keypoints.size() << std::endl;
-// code to print out 10 features
-
-cv::Mat desc;
-deEx->compute(input, keypoints, desc);
-
-std::cout << "after computing, feats size " << keypoints.size() << std::endl;
-*/
-  for(int i=0;i<dataset->getTrain().size();i++)
+for(int i=0;i<dataset->getTrain().size();i++)
 {
     MSM_epflObj *example1 = static_cast<MSM_epflObj *>(dataset->getTrain()[i].get());
-  cv::Mat im1 = cv::imread(path+"png/"+example1->imageName.c_str(), IMREAD_GRAYSCALE);
+    cv::Mat im1 = cv::imread(path+"png/"+example1->imageName.c_str(), IMREAD_GRAYSCALE);
 
-  cv::Mat scaled;
-  cv::resize(im1, scaled, cv::Size(), 0.3, 0.3);
-  cout << "im1 size: " << im1.cols << "x" << im1.rows << std::endl;
-
-    // vector<KeyPoint> kpts1, kpts2;
-    // Mat desc1, desc2;
-    // Ptr<SIFT> akaze = SIFT::create();
-    // akaze->detectAndCompute(im1, noArray(), kpts1, desc1);
-    // drawKeypoints(scaled, kpts1, scaled);
-
-
-
-//cv::Ptr<cv::FeatureDetector> dect = cv::FeatureDetector::create("MSER");
-
-//std::vector<cv::KeyPoint> keypoints;
-//dect->detect(im1, keypoints);
+    cv::Mat scaled;
+    cv::resize(im1, scaled, cv::Size(), 0.3, 0.3);
+    cout << "im1 size: " << im1.cols << "x" << im1.rows << std::endl;
 
 
     cv::cuda::printShortCudaDeviceInfo(cv::cuda::getDevice());
 
-    SURF_CUDA surf(10);
-    GpuMat keypoints1GPU, keypoints2GPU;
-    GpuMat descriptors1GPU, descriptors2GPU;
-    GpuMat img1;
-    img1.upload(scaled);
-    surf(img1, GpuMat(), keypoints1GPU, descriptors1GPU);
-    vector<KeyPoint> keypoints1, keypoints2;
-    vector<float> descriptors1, descriptors2;
-    surf.downloadKeypoints(keypoints1GPU, keypoints1);
+    // SiftDescriptorExtractor extractor;
+    // SiftDescriptorExtractor detector;  
+    //Ptr<SIFT_Impl> pt;// featureDetector = FeatureDetector::create("SIFT");
+    vector<KeyPoint> keypoints1;
+    Mat descriptors1, descriptors2;
+    Ptr<SIFT> sift = SIFT::create(5100,3,.04,10.0,1.6);
+    sift->detectAndCompute(scaled, Mat(), keypoints1, descriptors1,0);
+    // SIFT_Impl sift(1,1,1.0,1.01.0);
+    // vector<KeyPoint> keypoints1;
+    // sift(scaled, scaled, keypoints1);
+    
+    // sift.downloadKeypoints(keypoints1GPU, keypoints1);
+     drawKeypoints(scaled, keypoints1, scaled);
 
-    drawKeypoints(scaled, keypoints1, scaled);
 
 
 
-
-  cv::imshow("input (scaled)", scaled);
-//  //cv::imshow("result", im1);
-  cv::waitKey();
+    cv::imshow("input (scaled)", scaled);
+    cv::waitKey();
 }
     return 0;
 }

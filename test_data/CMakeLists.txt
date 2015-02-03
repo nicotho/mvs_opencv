@@ -11,3 +11,11 @@ target_link_libraries(${PNAME}
     ${OpenCV_LIBS}
 )
 
+add_executable(test_surf test_surf.cpp)
+target_link_libraries(test_surf
+    ${OpenCV_LIBS}
+)
+
+
+add_executable(test_sift test_sift.cpp)
+target_link_libraries(test_sift   ${OpenCV_LIBS})

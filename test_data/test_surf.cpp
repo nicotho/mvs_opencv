@@ -78,95 +78,16 @@ int main(int argc, char *argv[])
     MSM_epflObj *example = static_cast<MSM_epflObj *>(dataset->getTrain()[0].get());
     printf("first image:\nname: %s\n", example->imageName.c_str());
 
-    printf("\nbounding:\n");
-    for (int i=0; i<2; ++i)
-    {
-        for (int j=0; j<3; ++j)
-        {
-            printf("%f ", example->bounding(i, j));
-        }
-        printf("\n");
-    }
+  
 
-    printf("\ncamera:\n");
-    for (int i=0; i<3; ++i)
-    {
-        for (int j=0; j<3; ++j)
-        {
-            printf("%f ", example->camera.mat1(i, j));
-        }
-        printf("\n");
-    }
-    printf("\n");
-
-    for (int i=0; i<3; ++i)
-    {
-        printf("%f ", example->camera.mat2[i]);
-    }
-    printf("\n\n");
-
-    for (int i=0; i<3; ++i)
-    {
-        for (int j=0; j<3; ++j)
-        {
-            printf("%f ", example->camera.mat3(i, j));
-        }
-        printf("\n");
-    }
-    printf("\n");
-
-    for (int i=0; i<3; ++i)
-    {
-        printf("%f ", example->camera.mat4[i]);
-    }
-    printf("\n\n");
-
-    printf("image width: %u, height: %u\n", example->camera.imageWidth, example->camera.imageHeight);
-
-    printf("\nP:\n");
-    for (int i=0; i<3; ++i)
-    {
-        for (int j=0; j<4; ++j)
-        {
-            printf("%f ", example->p(i, j));
-        }
-        printf("\n");
-    }
-
-
-
-
-/*cv::Ptr<cv::DescriptorExtractor>deEx=cv::DescriptorCalculator::create("SIFT");
-
-std::cout << "before computing, feats size " << keypoints.size() << std::endl;
-// code to print out 10 features
-
-cv::Mat desc;
-deEx->compute(input, keypoints, desc);
-
-std::cout << "after computing, feats size " << keypoints.size() << std::endl;
-*/
-  for(int i=0;i<dataset->getTrain().size();i++)
+for(int i=0;i<dataset->getTrain().size();i++)
 {
     MSM_epflObj *example1 = static_cast<MSM_epflObj *>(dataset->getTrain()[i].get());
-  cv::Mat im1 = cv::imread(path+"png/"+example1->imageName.c_str(), IMREAD_GRAYSCALE);
+    cv::Mat im1 = cv::imread(path+"png/"+example1->imageName.c_str(), IMREAD_GRAYSCALE);
 
-  cv::Mat scaled;
-  cv::resize(im1, scaled, cv::Size(), 0.3, 0.3);
-  cout << "im1 size: " << im1.cols << "x" << im1.rows << std::endl;
-
-    // vector<KeyPoint> kpts1, kpts2;
-    // Mat desc1, desc2;
-    // Ptr<SIFT> akaze = SIFT::create();
-    // akaze->detectAndCompute(im1, noArray(), kpts1, desc1);
-    // drawKeypoints(scaled, kpts1, scaled);
-
-
-
-//cv::Ptr<cv::FeatureDetector> dect = cv::FeatureDetector::create("MSER");
-
-//std::vector<cv::KeyPoint> keypoints;
-//dect->detect(im1, keypoints);
+    cv::Mat scaled;
+    cv::resize(im1, scaled, cv::Size(), 0.3, 0.3);
+    cout << "im1 size: " << im1.cols << "x" << im1.rows << std::endl;
 
 
     cv::cuda::printShortCudaDeviceInfo(cv::cuda::getDevice());
@@ -186,8 +107,8 @@ std::cout << "after computing, feats size " << keypoints.size() << std::endl;
 
 
 
-  cv::imshow("input (scaled)", scaled);
-//  //cv::imshow("result", im1);
+    cv::imshow("input (scaled)", scaled);
+    //  //cv::imshow("result", im1);
   cv::waitKey();
 }
     return 0;
