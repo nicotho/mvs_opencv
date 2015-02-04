@@ -74,46 +74,68 @@ int main(int argc, char *argv[])
     Ptr<MSM_epfl> dataset = MSM_epfl::create();
     dataset->load(path);
 
-    // ***************
-    // dataset contains all information for each image.
-    // For example, let output dataset size and first object.
-    printf("dataset size: %u\n", (unsigned int)dataset->getTrain().size());
-    MSM_epflObj *example = static_cast<MSM_epflObj *>(dataset->getTrain()[0].get());
-    printf("first image:\nname: %s\n", example->imageName.c_str());
+
 
   
 
-for(int i=0;i<dataset->getTrain().size();i++)
+for(int i=1;i<dataset->getTrain().size();i++)
 {
+    MSM_epflObj *example0 = static_cast<MSM_epflObj *>(dataset->getTrain()[i-1].get());
     MSM_epflObj *example1 = static_cast<MSM_epflObj *>(dataset->getTrain()[i].get());
+    cv::Mat im0 = cv::imread(path+"png/"+example0->imageName.c_str(), IMREAD_GRAYSCALE);
     cv::Mat im1 = cv::imread(path+"png/"+example1->imageName.c_str(), IMREAD_GRAYSCALE);
 
     cv::Mat scaled;
-    cv::resize(im1, scaled, cv::Size(), 0.3, 0.3);
-    cout << "im1 size: " << im1.cols << "x" << im1.rows << std::endl;
+    cv::resize(im0, im0, cv::Size(), 0.3, 0.3);
+    cv::resize(im1, im1, cv::Size(), 0.3, 0.3);
 
 
-    cv::cuda::printShortCudaDeviceInfo(cv::cuda::getDevice());
 
+
+
+    // detecting keypoints & computing descriptors
     // SiftDescriptorExtractor extractor;
     // SiftDescriptorExtractor detector;  
     //Ptr<SIFT_Impl> pt;// featureDetector = FeatureDetector::create("SIFT");
-    vector<KeyPoint> keypoints1;
+    vector<KeyPoint> keypoints1,keypoints2;
     Mat descriptors1, descriptors2;
-    Ptr<SIFT> sift = SIFT::create(5100,3,.04,10.0,1.6);
-    sift->detectAndCompute(scaled, Mat(), keypoints1, descriptors1,0);
-    // SIFT_Impl sift(1,1,1.0,1.01.0);
-    // vector<KeyPoint> keypoints1;
-    // sift(scaled, scaled, keypoints1);
-    
-    // sift.downloadKeypoints(keypoints1GPU, keypoints1);
-     drawKeypoints(scaled, keypoints1, scaled);
+    Ptr<SIFT> sift = SIFT::create(50,5,.08,10.0,1.6);
+    sift->detectAndCompute(im0, Mat(), keypoints1, descriptors1,0);
+    sift->detectAndCompute(im1, Mat(), keypoints2, descriptors2,0);
 
 
 
+    GpuMat keypoints1GPU, keypoints2GPU;
+    GpuMat descriptors1GPU, descriptors2GPU;
+    keypoints1GPU.upload(keypoints1);keypoints2GPU.upload(keypoints2);    
+    descriptors1GPU.upload(descriptors1);descriptors2GPU.upload(descriptors2);    
 
-    cv::imshow("input (scaled)", scaled);
-    cv::waitKey();
+
+
+    // // matching descriptors
+    //Ptr<DescriptorMatcher> matcher= DescriptorMatcher::createBFMatcher(cv2.NORM_L2); 
+    cv::Ptr<cv::cuda::DescriptorMatcher> matcher = cv::cuda::DescriptorMatcher::createBFMatcher(cv::NORM_L2);
+    cv::cuda::GpuMat d_matches;    
+    matcher->matchAsync(descriptors1GPU, descriptors2GPU, d_matches);
+
+
+    vector<DMatch> matches;
+    vector<DMatch> matches1;
+
+
+    matcher->matchConvert(d_matches, matches);
+
+
+
+    // drawing the results
+    Mat img_matches;
+    drawMatches(Mat(im0), keypoints1, Mat(im1), keypoints2, matches, img_matches);
+
+    // namedWindow("matches", 0);
+    imshow("matches", img_matches);
+    waitKey(0);
+
+
 }
     return 0;
 }

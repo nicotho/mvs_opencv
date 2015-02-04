@@ -19,3 +19,9 @@ target_link_libraries(test_surf
 
 add_executable(test_sift test_sift.cpp)
 target_link_libraries(test_sift   ${OpenCV_LIBS})
+
+add_executable(test_ply test_ply.cpp)
+target_link_libraries(test_ply   ${OpenCV_LIBS})
+
+add_executable(test_reconstruct test_reconstruct.cpp)
+target_link_libraries(test_reconstruct   ${OpenCV_LIBS})
