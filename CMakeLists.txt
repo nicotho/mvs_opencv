@@ -18,3 +18,7 @@ message(STATUS "OpenCV_LIBS=${OpenCV_LIBS}")
 
 # add all the subprojects
 add_subdirectory(test_data)
+
+
+# add all the subprojects
+add_subdirectory(mvs_cloud)
