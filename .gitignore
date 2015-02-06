@@ -11,5 +11,5 @@ tegra/
 build/
 b/
 bb/
-
+*.kdev4
 
