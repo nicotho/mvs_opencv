@@ -12,6 +12,8 @@
 
 
 #include "mvs.hpp"
+#include "triangulation.hpp"
+
 
 using namespace cv;
 using namespace std;
@@ -42,7 +44,8 @@ public :
                         Mat descriptors;        
                         Mat dst;
                         Mat viz;
-                        double contrast_threshold=0.01,edge_threshold=3.0,sigma=1.2;
+//                         double contrast_threshold=0.01,edge_threshold=3.0,sigma=1.2;
+                        double contrast_threshold=0.005,edge_threshold=3.0,sigma=1.2;
                         int nbr_levels=5;
 			
                         Ptr<SIFT> sift = SIFT::create(10000,nbr_levels,contrast_threshold,edge_threshold,sigma);
@@ -54,10 +57,10 @@ public :
                         //sort(features[i].begin(), features[i].end(), greater< KeyPoint<float> >());
                         //response
                         //cv::resize(dst, dst, cv::Size(), 0.3, 0.3);                                        
-                         //cv::drawKeypoints(images[i], features[i], viz);
-                      //  cv::resize(viz,viz, cv::Size(), 0.25, 0.25);  
-                         //cv::imshow("input (scaled)", viz);                                        
-                         //cv::waitKey();
+                        //cv::drawKeypoints(images[i], features[i], viz);
+                        //cv::resize(viz,viz, cv::Size(), 0.25, 0.25);  
+                       // cv::imshow("input (scaled)", viz);                                        
+                       // cv::waitKey();
                         //drawKeypoints(image, keypoints
                         cout<<"Found "<<features[i].size()<<" interest points\n";
 
@@ -75,7 +78,7 @@ public :
                 double k = 0.06;
                 cout << "Computing feature points... "; cout.flush();
                 features.resize(nimages);
-
+            
                 
                 for (int i=0; i<nimages; i++)
                 {
@@ -103,16 +106,103 @@ public :
                                 }
                         
                         //cv::resize(dst, dst, cv::Size(), 0.3, 0.3);                                        
-                        cv::drawKeypoints(images[i], features[i], viz);
+                       // cv::drawKeypoints(images[i], features[i], viz);
                       //  cv::resize(viz,viz, cv::Size(), 0.25, 0.25);  
-                        cv::imshow("input (scaled)", viz);                                        
-                        cv::waitKey();
+                      //  cv::imshow("input (scaled)", viz);                                        
+                      //  cv::waitKey();
                         //drawKeypoints(image, keypoints
                         cout<<"Found "<<features[i].size()<<" interest points\n";
 
 		}
 
 	}
+	template <typename T>
+	static float distancePointLine(const cv::Point_<T> point, const cv::Vec<T,3>& line)
+        {
+        //Line is given as a*x + b*y + c = 0
+        return std::abs(line(0)*point.x + line(1)*point.y + line(2))
+            / std::sqrt(line(0)*line(0)+line(1)*line(1));
+        }
+	
+	void test_fundamental(int i1, int i2)
+        {
+            
+            
+            int  matching_size =3;
+            Mat im1 = images[i1];
+            Mat im2=images[i2];
+            Size sz1 = images[i1].size();
+            Size sz2 = images[i2].size();
+            Mat im3(sz1.height, sz1.width+sz2.width, CV_8UC1);
+            // Move right boundary to the left.
+            im3.adjustROI(0, 0, 0, -sz2.width);
+            im1.copyTo(im3);
+            // Move the left boundary to the right, right boundary to the right.
+            im3.adjustROI(0, 0, -sz1.width, sz2.width);
+            im2.copyTo(im3);
+            // restore original ROI.
+            im3.adjustROI(0, 0, sz1.width, 0);
+            imshow("im3", im3);
+            cv::waitKey();
+            
+
+            
+            
+            
+            cout << "Matching features between image " << i1+1 << " and image " << i2+1 << "... \n"; cout.flush();
+            const camera<double> &camera1 = cameras[i1], &camera2 = cameras[i2];  
+            
+            Vec3 epi= camera2.epipole(camera1);
+            Mat3 F = camera2.fundamental(camera1);
+             
+            std::vector<KeyPoint>& f1=features[i1];
+            std::vector<KeyPoint>& f2=features[i2];
+                      
+
+            int c1 = 0;
+            for (vector< KeyPoint >::iterator cit1 = features[i1].begin() ; cit1 != features[i1].end() ; ++cit1, c1++)
+            {
+                // Compute the epipolar line in image 2
+                Vec3 e = F* Vec3( cit1->pt.x, cit1->pt.y, 1.f );
+                float n = sqrt(e[0]   * e[0]+ e[1]* e[1]);
+               
+                float min_score = 1;//(2*matching_size+1)*(2*matching_size+1)*10.*10.;
+                int c2 = 0;
+                float  epipolar_tol(2.5f);
+                circle( im3, Point( cit1->pt.x, cit1->pt.y), 5,  Scalar( 255),3 );
+                cv::line(im3,cv::Point(im1.cols,-e[2]/e[1]),cv::Point(im1.cols+im1.cols-1,-(e[2]+e[0]*(im1.cols-1))/e[1]), cv::Scalar(255));
+                for (vector< KeyPoint >::iterator cit2 = features[i2].begin() ; cit2 != features[i2].end() ; ++cit2, c2++)
+                {
+                    
+                    
+                    
+                    
+                        float tmp =distancePointLine(cit2->pt, e);
+                        std::cout<<"Distance "<<tmp<<endl;
+                        if( tmp > .1)
+                        {
+                            //The point match is no inlier
+                            continue;
+                        }
+                 
+                 
+                        cout<<"Tolerance met\n";                 
+
+                        circle( im3, Point( cit2->pt.x+im1.cols ,cit2->pt.y), 5,  Scalar( 255),3 );                       
+        
+                        
+                        imshow("im3", im3);
+                        cv::waitKey();
+                 
+                }
+                cout << "Matching features between image " << i1+1 << " and image " << i2+1 << "... \n"; cout.flush();
+                
+
+
+                    
+            }
+            
+        }
 	
 	
 	void compute_match(int i1, int i2)
@@ -152,6 +242,7 @@ public :
                 
                 // Compute the epipolar line in image 2
                 Vec3 e = F * Vec3( cit1->pt.x, cit1->pt.y, 1.f );
+                std::cout<<F<<endl;
                 float n = sqrt(e[0]   * e[0]+ e[1]* e[1]);
 
                 
@@ -163,21 +254,16 @@ public :
                 float min_score = 1;//(2*matching_size+1)*(2*matching_size+1)*10.*10.;
                 int c2 = 0;
                 float  epipolar_tol(2.5f);
+                circle( im3, Point( e(0)/e(2)+im1.cols ,e(0)/e(2)), 5,  Scalar( 255),3 );
                 for (vector< KeyPoint >::iterator cit2 = features[i2].begin() ; cit2 != features[i2].end() ; ++cit2, c2++)
                 {
                     if (cit2->pt.x < matching_size || cit2->pt.x > im2.cols-matching_size || cit2->pt.y < matching_size ||  cit2->pt.y > im2.rows-matching_size) continue;
 
                         // If the distance to the epipolar line exceeds a threshold, skip it
-                        if ( fabs(cit2->pt.x * e[0] + cit2->pt.y * e[1] + e[3]) > n * epipolar_tol ) continue;
+                       if ( fabs(cit2->pt.x * e[0] + cit2->pt.y * e[1] + e[3]) > n * epipolar_tol ) continue;
 
                         
-                        circle( im3, Point( cit1->pt.x ,cit1->pt.y), 5,  Scalar( 255),3 );
-
-    
-                        imshow("im3", im3);
-                    cout<<"Tolerance met\n";
-                        cv::waitKey();
-                    
+                   
                         // Compute 3D position
                         //Triangulation<float> triang;
                         //triang.add(camera1, cit1->pos);
@@ -185,6 +271,11 @@ public :
                         ///float error, rcond;
                         //bool in_front;
                         //Vector3 p = triang.compute(error,in_front,rcond);
+                        Triangulation<double> triang;
+                        triang.add(camera1,camera2);
+                        
+                        !!!!!!!!!!!!!!!!!!!!!!!Camera amtrizen in Triangulation icht upgedatet
+                        Vec3 M=  triang.LinearLSTriangulation(Vec3(cit1->pt.x,cit1->pt.y,1.0), Vec3(cit2->pt.x,cit2->pt.y,1.0));
                         //if (!in_front || error > reproj_tol || rcond < rcond_tol) continue;
 
                         //DrawCircle(Point2(cit2->pos)+Point2(image1.width(),0),5,Blue);

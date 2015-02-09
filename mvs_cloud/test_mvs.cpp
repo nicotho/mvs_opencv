@@ -20,7 +20,8 @@ int main(int argc, char *argv[])
 
 	mvs_cloud m;
 	m.compute_img_features_sift();
-        m.compute_match(0,1);
+        m.test_fundamental(0,1);
+        //m.compute_match(0,1);
 	return 0;
 
 
