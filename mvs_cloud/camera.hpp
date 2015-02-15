@@ -33,35 +33,32 @@ public :
             _t= Vec3(t[0]/t[3],t[1]/t[3],t[2]/t[3]);    
             _p=Vec3(P(0,3),P(1,3),P(2,3));
             
-            std::cout<<"P "<<P<<std::endl;
-                 std::cout<<"p "<<-_K*_R*_t<<std::endl;
+
                        
             _u0=_K(0,2);_v0=_K(1,2);        
             _alpha=_K(0,0);_beta=_K(1,1);_skew=_K(0,1);
         
             _update_Pp_from_KRt();
-           
-           
-         this->scaleCamera(scale);
-         _update_Pp_from_KRt();
+  
+          
+    
+            this->scaleCamera(scale);
+            _update_Pp_from_KRt();
 
-            
 
 	}
         camera(Mat3 K,Mat3 R, Vec3 t_,T scale)
         {
             _t=t_;  
-            _K=K*scale;
+            _K=K;
             _R=R;
-            _K(2,2)*=(1.0/scale);
+            
             _u0=_K(0,2);_v0=_K(1,2);        
             _alpha=_K(0,0);_beta=_K(1,1);_skew=0.0;
-           // std::cout<<"scale "<<scale<<std::endl;
-            //std::cout<<"K "<<_K<<std::endl;
-            
-            _update_Pp_from_KRt();
-            
            
+            _update_Pp_from_KRt1();
+            
+           std::cout<<"SCALE "<<scale<<std::endl;
             std::cout<<"P "<<_P<<std::endl;
             std::cout<<"p "<<_p<<std::endl;
             std::cout<<"K "<<_K<<std::endl;
@@ -70,16 +67,16 @@ public :
             
             this->scaleCamera(scale);
             
-            
-            _update_Pp_from_KRt();
+
+            _update_Pp_from_KRt1();
             
            
-//             std::cout<<"P "<<_P<<std::endl;
-//             std::cout<<"p "<<_p<<std::endl;
-//             std::cout<<"K "<<_K<<std::endl;
-//             std::cout<<"R "<<_R<<std::endl;
-//             std::cout<<"T "<<_t<<std::endl;
-//             
+            std::cout<<"P "<<_P<<std::endl;
+            std::cout<<"p "<<_p<<std::endl;
+            std::cout<<"K "<<_K<<std::endl;
+            std::cout<<"R "<<_R<<std::endl;
+            std::cout<<"T "<<_t<<std::endl;
+            
 //             std::exit(0);              
 
 
@@ -126,8 +123,8 @@ protected :
                 return;
             float scaling1= std::pow(0.5, double(n));
             float scaling2= std::pow(0.5, double(n + 1)) - 1.0;
-           cout<<"Scaling 1 "<<scaling1<<endl;
-           cout<<"Scaling 2 "<<scaling2<<endl;
+//            cout<<"Scaling 1 "<<scaling1<<endl;
+//            cout<<"Scaling 2 "<<scaling2<<endl;
             const Mat3      M(scaling1,   0,  scaling2,
                                 0, scaling1, scaling2,
                                 0,   0,   1);
@@ -135,21 +132,23 @@ protected :
             _K = M * _K;
             _u0=_K(0,2);_v0=_K(1,2);        
             _alpha=_K(0,0);_beta=_K(1,1);_skew=_K(0,1);
-            //_p = M * _p; 
+            
         }
 public        :
 
 
         //Projection matrix 3x3
         const Mat3 & P() const { return _P; }
-        //Projection matrix 3x3
+
+        //Projection matrix inverse 3x3
         Mat3  Pinv() const{ return _P.inv(); }
 
+        //camera center
+        //-(KR)^-1*p=-Pinv*p
         Vec3 center() const { return -(_P.inv() * _p); }
-        // Returns projection matrix P inverse. 
-       // Mat34 Pinv() const { return _P.inverse(); }
-
-    
+        
+      
+   
         //EXTRINSIC ROTATION MATRIX
         const Mat3 & R() const { return _R; }
 
@@ -179,13 +178,7 @@ public        :
         void update_KRt_from_Pp()
         {
             
-//             const T f = _P.row(2).length();
-// 
-//             Matx <T,1,3> q0 = _P.row(0) / f;
-//             Matx <T,1,3> q1 = _P.row(1) / f;
-//             Matx <T,1,3>  q2 = _P.row(2) / f;
-// //             const Vec3q = _p / f;
-//             
+
                 Vec3 q0(_P(0,0),_P(0,1),_P(0,2));
                 Vec3 q1(_P(1,0),_P(1,1),_P(1,2));
                 Vec3 q2(_P(2,0),_P(2,1),_P(2,2));
@@ -194,28 +187,22 @@ public        :
                 
                 q/=f;q0/=f;q1/=f;q2/=f;
             
-// 
+
              const Vec3& r2 = q2;
              _t[2] = q[2];
-// 
+ 
              _v0 = norm(q1*r2)*norm(q1*r2);
              _beta = norm(q1 - _v0 * r2);
             _t[1] = (q[1] - _v0 * _t[2]) / _beta;
             const Vec3 r1 = (q1 - _v0 * r2) / _beta;
-// 
+ 
             _u0 = norm(q0*r2)*norm(q0*r2);
             _skew =norm(q1*r1)*norm(q1*r1);
             _alpha = norm(q0 - _skew * r1 - _u0 * r2)*norm(q0 - _skew * r1 - _u0 * r2);
             _t(0) = (q(0) - _skew * _t(1) - _u0 * _t(2)) / _alpha;
             const Vec3 r0 = (q0 - _skew * r1 - _u0 * r2) / _alpha;
 
-// //             _R.set_rows(r0, r1, r2);
-//             _P(0,0) =r0(0);_P(0,1) =row0(1);_P(0,2) =row0(2);
-//             _P(1,0) =r1(0);_P(1,1) =row1(1);_P(1,2) =row1(2);
-//             _P(2,0) =r2(0);_P(2,1) =r2(1);_P(2,2) =r2(2);
-//             
-//             _K(0,2)=_u0;_K(1,2)=_v0;        
-//             _K(0,0)=_alpha;_K(1,1)=_beta;_K(0,1)_skew;
+
             
         }
         
@@ -224,6 +211,13 @@ public        :
            _P=_K*_R;    
            _p= -_K*_R*_t;
         }
+        
+        void _update_Pp_from_KRt1()
+        {
+           _P=_K*_R;    
+           _p= _K*_t;
+        }
+        
         
         
         /*! Transforms world coords to camera coords. */
@@ -267,7 +261,23 @@ public        :
 
         }
         
+        /*
+        void pixel_width
+        
+                                const T n = this->_matrix.getrow(2).norm();
+                        Vector3 q1 = this->_matrix.getrow(0) / n;
+                        Vector3 q2 = this->_matrix.getrow(1) / n;
+                        Vector3 q3 = this->_matrix.getrow(2) / n;
+                        Vector3 r = this->_vector / n;
+
+                        Vector3 q13 = q1 ^ q3;
+                        Vector3 q23 = q2 ^ q3;
+                        _pixel_size.x() = q13.norm();
+                        _pixel_size.y() = q23.norm();
+        */
+        
         Vec3 direction() const {             
+           // return Vec3(this->_R(2,0),this->_R(2,1),this->_R(2,2));
             return Vec3((this->_R.row(2)).operator ()(0,0),
                         (this->_R.row(2)).operator ()(0,1),
                         (this->_R.row(2)).operator ()(0,2));            

@@ -1,4 +1,4 @@
-#ifndef TRIANGULATION_H
+ #ifndef TRIANGULATION_H
 #define TRIANGULATION_H
 
 #include "camera.hpp"
@@ -8,10 +8,11 @@ class Triangulation{
 
         typedef Matx<T,3,3> Mat3;
         typedef Matx<T,3,4> Mat34;
+        typedef Matx<T,4,3> Mat43;
         typedef Vec<T,3>    Vec3;
         typedef Vec<T,2>    Vec2;
         typedef camera<T>   Camera;
-        typedef T           class_type;
+        typedef T           value_type;
         
 public:
     
@@ -20,44 +21,71 @@ public:
 
     void add(const camera<T>& c1,const camera<T>& c2)
     {
-       // Mat_<T> t=hconcat(c1.P(),c2.p());
-       /* _P1=hconcat(c1.P(),c2.p());
-        _P2=hconcat(c1.P(),c2.p());
-       */ 
+       _P1= c1.P();
+       _P2= c2.P();
+       _p1=c1.p();
+       _p2=c2.p();
     }
     
     
-    Vec3 triangulate(T& residual ){
-        
-        Vec3 M;
-        
-
-//        M =IterativeLinearLSTriangulation();
-        M =LinearLSTriangulation();
-        return Vec3(0,0,0);
-    }
 
 
 
-     Vec3 LinearLSTriangulation(Vec3 u,  Vec3 u1)     
+    Vec3 LinearLSTriangulation(Vec3 u,  Vec3 u1,T& residual ,bool& infront)
     {
         //build matrix A for homogenous equation system Ax = 0
         //assume X = (x,y,z,1), for Linear-LS method
         //which turns it into a AX = B system, where A is 4x3, X is 3x1 and B is 4x1
-        Mat34 A(u(0)*_P1(2,0)-_P1(0,0),    u(0)*_P1(2,1)-_P1(0,1),      u(0)*_P1(2,2)-_P1(0,2),
-            u(1)*_P1(2,0)-_P1(1,0),    u(1)*_P1(2,1)-_P1(1,1),      u(1)*_P1(2,2)-_P1(1,2),
-            u1(0)*_P2(2,0)-_P2(0,0), u1(0)*_P2(2,1)-_P2(0,1),   u1(0)*_P2(2,2)-_P2(0,2),
-            u1(1)*_P2(2,0)-_P2(1,0), u1(1)*_P2(2,1)-_P2(1,1),   u1(1)*_P2(2,2)-_P2(1,2)
-                );
-        Mat_<T> B = (Mat_<T>(4,1) <<    -(u(0)*_P1(2,3)    -_P1(0,3)),
-                        -(u(1)*_P1(2,3)  -_P1(1,3)),
-                        -(u1(0)*_P2(2,3)    -_P2(0,3)),
-                        -(u1(1)*_P2(2,3)    -_P2(1,3)));
+        Mat43 A(u(0)*_P1(2,0) -_P1(0,0) ,    u(0)*_P1(2,1) -_P1(0,1) ,  u(0)*_P1(2,2)-_P1(0,2)  ,
+                u(1)*_P1(2,0) -_P1(1,0) ,    u(1)*_P1(2,1) -_P1(1,1) ,  u(1)*_P1(2,2)-_P1(1,2)  ,
+                u1(0)*_P2(2,0)-_P2(0,0) ,    u1(0)*_P2(2,1)-_P2(0,1) ,  u1(0)*_P2(2,2)-_P2(0,2) ,
+                u1(1)*_P2(2,0)-_P2(1,0) ,    u1(1)*_P2(2,1)-_P2(1,1) ,  u1(1)*_P2(2,2)-_P2(1,2));
+        
+        Mat_<T> B = (Mat_<T>(4,1) <<    -(u(0) *_p1(2)  -_p1(0))  ,
+                                        -(u(1) *_p1(2)  -_p1(1))  ,
+                                        -(u1(0)*_p2(2)  -_p2(0))  ,
+                                        -(u1(1)*_p2(2)  -_p2(1)));
+        
+        //std::cout<<endl<< A<<endl;
+        //std::cout <<B<<endl;
     
         Mat_<T> X;
+        //std::cout<<"solve \n";
         solve(A,B,X,DECOMP_SVD);
-        convertPointsFromHomogeneous(X,X);
+       // std::cout<<"Finished solve \n"<<X<<endl;
+        
+        
+        residual=compute_error(X,u, u1,infront);
+        
         return Vec3(X(0),X(1),X(2));
+    }
+    
+    
+    
+    T compute_error(const Vec3& M,Vec3 u,  Vec3 u1,bool & infront)
+    {
+        value_type residual = 0;
+
+    
+        Vec3 m = _P1 * M + _p1;
+        value_type x = m(0) / m(2);
+        value_type y = m(1) / m(2);
+        if (m(2)<=0) infront = false;
+        
+//         std::cout<< "U "<<u << " reprojected "<<x<<" "<<y<<endl;
+        residual += norm(Vec2(x, y) - Vec2(u(0),u(1)))*norm(Vec2(x, y) - Vec2(u(0),u(1)));
+    
+
+        m = _P2 * M + _p2;
+        x = m(0) / m(2);
+        y = m(1) / m(2);
+        if (m(2)<=0) infront = false;
+        residual += norm(Vec2(x, y) - Vec2(u1(0),u1(1)))*norm(Vec2(x, y) - Vec2(u1(0),u1(1)));
+        
+//         std::cout<< "U1 "<<u1 << " reprojected "<<x<<" "<<y<<endl;
+//         std::cout<<residual<<endl;
+        //std::exit(0);
+        return residual;
     }
 
     
@@ -117,8 +145,8 @@ protected:
     
     
     int num_views;
-    Mat34 _P1,_P2;
-    
+    Mat3 _P1,_P2;
+    Vec3 _p1,_p2;
     T* data;
 
 
